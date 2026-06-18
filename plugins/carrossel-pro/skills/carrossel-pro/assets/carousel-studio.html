@@ -412,7 +412,7 @@ const SF={
 function fxDefaults(s){
   const K=KITS[data.kit]||KITS.editorial;
   const f=SF[(s&&s.tipo)]||SF.capa;
-  return {vpos:f.vpos||'inf',hpos:'esq',align:'esq',glass:false,card:false,badge:false,scale:100,gap:28,
+  return {vpos:f.vpos||'inf',hpos:'esq',align:'esq',glass:false,card:false,badge:false,scale:100,gap:28,voff:0,voffEl:{},
     tSize:f.tSize,tFont:K.disp,tWeight:800,tColor:'',tSpace:f.tSpace,
     sSize:f.sSize,sFont:K.body,sWeight:400,sColor:'',sSpace:0,lh:f.lh};
 }
@@ -513,7 +513,10 @@ function styleSlide(el2, s){
   el2.style.justifyContent=VM[fx.vpos]||'flex-end'; el2.style.alignItems=HM[fx.hpos]||'flex-start';
   const content=el2.querySelector('.content'), h1=el2.querySelector('.'+f.tcls), sub=f.scls?el2.querySelector('.'+f.scls):null, kicker=el2.querySelector('.kicker');
   const sc=(fx.scale||100)/100;
-  if(content){content.style.textAlign=TA[fx.align]||'left';content.style.maxWidth='92%';}
+  if(content){content.style.textAlign=TA[fx.align]||'left';content.style.maxWidth='92%';content.style.transform=(fx.voff||0)?('translateY('+(fx.voff||0)+'px)'):'';
+    const VO=fx.voffEl||{};
+    Array.prototype.forEach.call(content.children,function(ch){var cls=(ch.className||'').split(' ')[0];var o=VO[cls]||0;if(o){var t=(ch.style.transform&&ch.style.transform!=='none')?(ch.style.transform+' '):'';ch.style.transform=t+'translateY('+o+'px)';}});
+  }
   if(kicker){ kicker.style.marginBottom=(fx.gap*sc)+'px';
     if(fx.badge){kicker.style.display='inline-block';kicker.style.background='var(--accent)';kicker.style.color='var(--bg)';kicker.style.padding='12px 22px';kicker.style.borderRadius='999px';} }
   if(h1){ h1.style.fontSize=(fx.tSize*sc)+'px'; h1.style.fontWeight=fx.tWeight; h1.style.lineHeight=fx.lh; h1.style.letterSpacing=fx.tSpace+'em';
@@ -1018,6 +1021,18 @@ function renderInspector(){
   globalStylePanel(insp);
   logoBadgePanel(insp);
 }
+function contentRoles(s){
+  switch(s.tipo){
+    case 'capa': { const r=[]; if(s.kicker)r.push(['kicker','Rótulo (kicker)']); r.push(['h1','Título']); if(s.sub)r.push(['sub','Subtítulo']); return r; }
+    case 'passo': { const r=[['h2','Título']]; if(s.corpo)r.push(['body','Corpo']); return r; }
+    case 'insight': { const r=[['quote','Citação']]; if(s.fonte)r.push(['source','Fonte']); return r; }
+    case 'lista': return [['h2','Título'],['itens','Lista']];
+    case 'stat': { const r=[['stat','Número'],['rotulo','Rótulo']]; if(s.corpo)r.push(['body','Corpo']); return r; }
+    case 'cta': { const r=[['cta','Título']]; if(s.sub)r.push(['sub','Subtítulo']); if(s.acao)r.push(['acao','Botão']); return r; }
+    case 'tweet': case 'nota': { const r=[]; if(s.kicker)r.push(['kicker','Rótulo']); if(s.titulo)r.push(['h2','Título']); if(s.sub)r.push(['sub','Subtítulo']); return r; }
+    default: return [['h1','Título']];
+  }
+}
 function capaStylePanel(insp,s,upd){
   const fx=ensureFx(s);
   const head=el('div','sectionhead'+(collapsed.fx?' closed':''));
@@ -1028,6 +1043,15 @@ function capaStylePanel(insp,s,upd){
   insp.appendChild(box);
   box.appendChild(glabel('Layout & posição'));
   box.appendChild(gridPos(fx,(v,h)=>{fx.vpos=v;fx.hpos=h;upd();renderInspector();}));
+  box.appendChild(slider('Altura — bloco inteiro (subir / descer)',-600,600,5,fx.voff||0,v=>(v>0?'+':'')+v+'px',v=>{fx.voff=v;upd();}));
+  if(!fx.voffEl)fx.voffEl={};
+  const roles=contentRoles(s);
+  if(roles.length){
+    box.appendChild(glabel('Altura por elemento'));
+    roles.forEach(function(rl){
+      box.appendChild(slider(rl[1],-400,400,5,fx.voffEl[rl[0]]||0,v=>(v>0?'+':'')+v+'px',v=>{fx.voffEl[rl[0]]=v;upd();}));
+    });
+  }
   box.appendChild(glabel('Alinhamento'));
   box.appendChild(segmented([['esq','Esq'],['centro','Centro'],['dir','Dir']],fx.align,v=>{fx.align=v;upd();renderInspector();}));
   box.appendChild(chk('Glass ao redor do conteúdo',fx.glass,v=>{fx.glass=v;if(v)fx.card=false;upd();renderInspector();}));
